@@ -7,6 +7,7 @@
 using namespace std;
 int main(int argc, char *argv[])
 {
-
+	
+  double x = 10.;
   return 0;
 }
