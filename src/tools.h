@@ -26,6 +26,7 @@ public:
   static vector<double> NormalizeVector(vector<double>);
   static void print_vector(const double*);
   static double PhiAngle(const double*);
+  static vector<double> Get_Dir_Spherical(double r, double phi, double theta);
   ~tools();
 
 
