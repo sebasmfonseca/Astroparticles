@@ -130,3 +130,10 @@ double tools::PhiAngle(const double *cpoint)
   }
   return 0;
 }
+
+std::vector<double> tools::Get_Dir_Spherical(double r, double phi, double theta){
+
+  std::vector<double> d {r*sin(theta)*cos(phi), r*sin(theta)*sin(phi), r*cos(theta)};
+  
+  return d;
+}
