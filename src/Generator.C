@@ -1,26 +1,33 @@
 #include "Generator.h"
 
-Generator::Generator(int s) : TRandom(s)
-{
+Generator::Generator(double x0, double l,double x,double r) : TRandom(time(0)),X0(x0),lambda(l),Xmax(x),Rmax(r)
+{}
 
+Generator::~Generator(){}
+
+double Generator::GaisserHillas(double X)
+{
+  double m = (Xmax-X0)/lambda;
+  double x = (X-X0)/lambda;
+
+  return pow((x/m),m)*exp(m-x);
 }
 
-Generator::~Generator()
+double Generator::GenerateDepth()
 {
-
-}
-
-std::vector<double> Generator::UniformDirection()
-{
-
-  std::vector<double> v(3);
-  v[0]= Uniform(-1,1);
-  v[1]= Uniform(-1,1);
-  v[2]= Uniform(-1,0);
-  double norm = sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
-  for(int i=0;i<3;i++)
+  double X = Uniform(0.5*Xmax,2*Xmax);
+  double y = Uniform(1);
+  while(y>GaisserHillas(X))
   {
-    v[i]/=norm;
+    X = Uniform(0.5*Xmax,2*Xmax);
+    y = Uniform(1);
+
   }
-  return v;
+  return X;
+}
+
+vector<double> Generator::GenerateDirection()
+{
+  double theta = Uniform(M_PI/2);
+  return {sin(theta),-cos(theta)};
 }
