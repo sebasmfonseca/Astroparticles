@@ -1,77 +1,59 @@
 #include <iostream>
 #include <vector>
 #include "tools.h"
-#include "Particle.h"
 #include "Generator.h"
 #include "TCanvas.h"
 #include "TGraph.h"
 #include "TAxis.h"
 
+
 using namespace std;
 int main(int argc, char *argv[])
 {
-
- Generator* Gen = new Generator();
- double dt = 1e-9, XMax = 5000;
- Particle Primary({0,0,XMax},{0,0,-1});
- Primary.PropagateSimple(dt);
-
-
- double t0 = Primary.GetTime();
-
-/////////////////////////
-vector<double> t1;
-vector<double> R1;
- for(int i=1;i<1000;i++)
- {
-   //cout<<i<<endl;
-   Particle aux({0,0,XMax},Gen->UniformDirection());
-   if(aux.GetDirection()[2]<-.17)
-   {
-     aux.PropagateSimple(dt);
-     t1.push_back(aux.GetTime()-t0);
-     R1.push_back(aux.GetRadius());
-     //cout<<aux.GetTime()-t[0]<<endl;
-   }
-
-
- }
- auto c = new TCanvas("c","c",1200,900);
- auto G1 = new TGraph(t1.size(),R1.data(),t1.data());
- G1->GetXaxis()->SetRangeUser(-10,1.1*XMax/.17);
- G1->GetYaxis()->SetRangeUser(-1e-5,1e-4);
- G1->Draw("AP");
- G1->SetMarkerStyle(20);
- G1->SetMarkerColor(kRed);
- c->SaveAs("Simple.pdf");
-/////////////////////////
-
- double stddev = 500;
- vector<double> t2;
- vector<double> R2;
-  for(int i=1;i<1000;i++)
+  double X0 = 0, lambda = 6;
+  double D0 = 1030, H = 6500;
+  double Xmax = 500, Rmax=300;
+  double c = 2.998e8;
+  auto DepthToHeight = [H,D0](double X)
   {
-    //cout<<i<<endl;
-    Particle aux({0,0,Gen->NormalHeight(XMax,stddev)},Gen->UniformDirection());
-    if(aux.GetDirection()[2]<-.17)
+    return H*log(D0/X);
+  };
+
+  auto HeightToDepth = [H,D0](double h)
+  {
+    return D0*exp(-h/H);
+  };
+
+  Generator *Gen = new Generator(X0,lambda,Xmax,Rmax);
+  double t0 = DepthToHeight(Xmax)/c;
+
+  vector<double> R,T;
+  vector<double> xx,yy;
+  for(int i=0;i<100000;i++)
+  {
+    double h = DepthToHeight(Gen->GenerateDepth());
+
+    // xx.push_back((double)0.1*i );
+    // yy.push_back(Gen->GaisserHillas(HeightToDepth(0.1*i)));
+
+    vector<double> d = Gen->GenerateDirection();
+    double t = h/(abs(d[1])*c);
+    double r = c*t*d[0];
+    if(r<Rmax)
     {
-      aux.PropagateSimple(dt);
-      t2.push_back(aux.GetTime()-t0);
-      R2.push_back(aux.GetRadius());
-      //cout<<aux.GetTime()-t[0]<<endl;
+      R.push_back(r);
+      T.push_back(1e9*(t-t0));
     }
 
 
   }
-  auto G2 = new TGraph(t2.size(),R2.data(),t2.data());
-  G2->GetXaxis()->SetRangeUser(-10,1.1*XMax/.17);
-  G2->GetYaxis()->SetRangeUser(-1e-5,1e-4);
-  G2->Draw("AP");
-  G2->SetMarkerStyle(20);
-  G2->SetMarkerColor(kRed);
-  c->SaveAs("NormalDist.pdf");
+  auto G = new TGraph(R.size(),R.data(),T.data());
+  auto G1 = new TGraph(xx.size(),xx.data(),yy.data());
+  auto C = new TCanvas("c","c",1600,900);
+  G->GetXaxis()->SetRangeUser(-5,Rmax+5);
+  G->Draw("AP");
 
+  C->SaveAs("Hmm.pdf");
 
-
- return 0;
+  return 0;
 }
