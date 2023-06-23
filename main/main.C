@@ -1,97 +1,94 @@
 #include <iostream>
 #include <vector>
 #include "tools.h"
-#include "Particle.h"
 #include "Generator.h"
-#include "TApplication.h"
 #include "TCanvas.h"
 #include "TGraph.h"
 #include "TAxis.h"
-#include "TF1.h"
 
-int main() {
 
-  double photon_p = 1.; //photon momentum
-  double theta = 0.; //photon angle
-  const double c = 3*pow(10,8);
-  double d = 0.; //distance travelled by the photon
-  double h = 0.;
+using namespace std;
 
-  int N1 = 3000;
-  int N2 = 500;
-  double X0 = 1030.; //(g cm^-2)
-  double H = 6500; //(m)
+int main(int argc, char *argv[])
+{
+  double X0 = 0, lambda = 6;
+  double D0 = 1030, H = 6500;
+  double Xmax = 250, Rmax=300;
+  double c = 2.998e8;
 
-  //std::vector<double> photon_pos {0,0,X_max};
-  //Particle photon(22, photon_p, tools::Get_Dir_Spherical(1, 0, theta), photon_pos);
-  //double v = photon.GetVelocity()*3*pow(10,8);
+  auto DepthToHeight = [H,D0](double X)
+  {
+    return H*log(D0/X);
+  };
 
-  double v = c;
+  auto HeightToDepth = [H,D0](double h)
+  {
+    return D0*exp(-h/H);
+  };
 
-  std::vector<double> r(N1,0);
-  std::vector<double> Delta_t(N1,0);
-  std::vector<double> X_max(N2,0);
+  int N2 = 250;
+  vector<double> R,T;
+  //vector<double> xx,yy;
+  std::vector<double> XX(N2,0);
   std::vector<double> curvature(N2,0);
 
-  for(int j = 1; j < N2+1; j++){
+  for(int j=0; j<N2; j++)
+  {
+    //h = (-1)*H*log(X_max[j-1]/X0);
+    Generator *Gen = new Generator(X0,lambda,Xmax,Rmax);
 
-    X_max[j-1] = j;
-    h = (-1)*H*log(X_max[j-1]/X0);
-    //std::cout << X_max[j] << '\n';
-    
-    double t0 = h/v;
-    
-    for(int i=0; i < N1; i++){
-      r[i] = i*0.1;
-      theta = atan(r[i]/h);
-      d = h/cos(theta);
-      Delta_t[i] = (d/v - t0)*pow(10,9);
+  for(int i=0;i<100000;i++)
+  {
+    double h = DepthToHeight(Gen->GenerateDepth());
+
+    //xx.push_back((double)0.1*i );
+    //yy.push_back(Gen->GaisserHillas(HeightToDepth(0.1*i)));
+
+    vector<double> d = Gen->GenerateDirection();
+    double t = h/(abs(d[1])*c);
+    double r = c*t*d[0];
+
+    if(r<Rmax)
+    {
+      R.push_back(r);
+      T.push_back(1e9*(t-h/c));
     }
 
-    auto g = new TGraph(N1, r.data(), Delta_t.data());
+    
+  } 
+
+    auto g = new TGraph(R.size(), R.data(), T.data());
     g->Fit("pol2");
 
     TF1* fit = g->GetFunction("pol2");
 
-    curvature[j] = fit->GetParameter(2);
+    curvature[j] = fit->GetParameter(2) * 1e-9;
 
-    //std::cout << curv[j] << '\n';
-    
-    //delete fit;
-    //delete g;
+    XX[j] = Xmax;
+    Xmax++;
+
   }
 
-  //std::cout << "t0: " << t << '\n';
+  auto G = new TGraph(R.size(),R.data(),T.data());
+  //auto G1 = new TGraph(xx.size(),xx.data(),yy.data());
+  auto C = new TCanvas("c","c",1600,900);
+  G->GetXaxis()->SetRangeUser(-5,Rmax+5);
+  G->Draw("AP");
 
-  //TApplication app("app", nullptr, nullptr);
-  
-
-  //Draw Delta_t as a function of r
-  auto c1 = new TCanvas("c1","Delta_t (r)",200,10,1500,1500);
-
-  auto g1 = new TGraph(N1, r.data(), Delta_t.data());
-  g1->GetXaxis()->SetTitle("r[m]");
-  g1->GetYaxis()->SetTitle("t[ns]");
-  g1->Draw("AC");
-
-  c1->SaveAs("Deltatr.pdf");
+  C->SaveAs("Hmm.pdf");
 
   //Draw the shower plane curvature c as a function of X_max
   auto c2 = new TCanvas("c2"," c(X_max)",200,10,1500,1500);
   c2->cd();
 
-  auto g2 = new TGraph(N2, X_max.data(), curvature.data());
+  auto g2 = new TGraph(N2, XX.data(), curvature.data());
   g2->GetXaxis()->SetTitle("X_max[g/cm^2]");
   g2->GetYaxis()->SetTitle("c[s/m^2]");
-
+  
   g2->Fit("pol1");
   g2->Draw("AP");
 
   c2->SaveAs("cXmax.pdf");
-
-  //app.Run();
-
-  //app.Terminate();
 
   return 0;
 }
