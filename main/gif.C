@@ -5,17 +5,16 @@
 #include "TCanvas.h"
 #include "TGraph.h"
 #include "TAxis.h"
-#include "TF1.h"
 #include "TLatex.h"
 
 
 using namespace std;
 int main(int argc, char *argv[])
 {
-  double X0 = 0, lambda = 60;
-  double D0 = 1030, H = 6500, Rmax=300;
+  double X0 = 0, lambda = 1;
+  double D0 = 1030, H = 6500;
+  double Xmax = 150, Rmax=300;
   double c = 2.998e8;
-
   auto DepthToHeight = [H,D0](double X)
   {
     return H*log(D0/X);
@@ -26,22 +25,23 @@ int main(int argc, char *argv[])
     return D0*exp(-h/H);
   };
 
-  remove("C.gif");
-  vector<double> C,XX;
-  for(double Xmax=250;Xmax<500;Xmax+=1)
+
+  remove("Lambda.gif");
+  for(lambda;lambda<=150;lambda++)
   {
-    cout<<Xmax<<endl;
     Generator *Gen = new Generator(X0,lambda,Xmax,Rmax);
     vector<double> R,T;
+
     for(int i=0;i<100000;i++)
     {
       double h = DepthToHeight(Gen->GenerateDepth());
       while(h<0){h = DepthToHeight(Gen->GenerateDepth());};
+
       vector<double> d = Gen->GenerateDirection();
       double t = h/(abs(d[1])*c);
       double r = c*t*d[0];
 
-      if(r<Rmax)
+      if(r<Rmax && t>0 )
       {
         R.push_back(r);
         T.push_back(1e9*(t-h/c));
@@ -51,30 +51,16 @@ int main(int argc, char *argv[])
     }
     auto G = new TGraph(R.size(),R.data(),T.data());
     G->Fit("pol2");
-    TF1* fit = G->GetFunction("pol2");
+    G->SetTitle("#Delta t as a function of depth for #lambda = [1,150]");
+    auto C = new TCanvas("c","c",1600,900);
+    G->GetXaxis()->SetRangeUser(-5,Rmax+5);
+    G->GetYaxis()->SetRangeUser(-1,25);
+    G->GetXaxis()->SetTitle("Depth [gcm^{-2}]");
+    G->GetYaxis()->SetTitle("#Delta t [ns]");
+    G->Draw("AP");
 
-    XX.push_back(Xmax);
-    C.push_back(fit->GetParameter(2));
-
-
-
-    if(!((int)Xmax%10))
-    {
-      auto cc = new TCanvas("c","c",1600,900);
-      G->GetXaxis()->SetRangeUser(-5,Rmax+5);
-      G->GetYaxis()->SetRangeUser(-1,25);
-      G->Draw("AP");
-      cc->SaveAs("C.gif+10");
-    }
-
-
+    C->SaveAs("Lambda.gif+10");
   }
-  auto G = new TGraph(XX.size(),XX.data(),C.data());
-  G->Fit("pol1");
-  auto cv = new TCanvas("c","c",1600,900);
-  G->Draw("AP");
-  cv->SaveAs("Yo.pdf");
-
 
 
 
